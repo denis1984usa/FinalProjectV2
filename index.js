@@ -4,8 +4,22 @@ var ctx = canvas.getContext("2d");
 canvas.width = 1000;
 canvas.height = 1000;
 document.body.appendChild(canvas);
+let gameover = false;
+let won = false;
 
-// load images ========================================================
+let chessBoard = [
+    ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
+    ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
+    ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
+    ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
+    ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
+    ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
+    ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
+    ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
+    ['x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'],
+];
+
+// Load images ================================================================
 // Background image
 var bgReady = false;
 var bgImage = new Image();
@@ -13,7 +27,6 @@ bgImage.onload = function () {
     bgReady = true;
 };
 bgImage.src = "images/backgroundearth2.jpg";
-
 
 // Side image
 var sideReady = false;
@@ -31,9 +44,7 @@ topImage.onload = function () {
 };
 topImage.src = "images/BorderTop.jpg"; 
 
-
-
-// Hero image
+// Hero (Astronaut) image
 var heroReady = false;
 var heroImage = new Image();
 heroImage.onload = function () {
@@ -41,198 +52,318 @@ heroImage.onload = function () {
 };
 heroImage.src = "images/Front.png";
 
-// Monster image
+// Monster (SpaceX) image
 var monsterReady = false;
 var monsterImage = new Image();
 monsterImage.onload = function () {
     monsterReady = true;
 };
-monsterImage.src = "images/SpaceX.png";
+monsterImage.src = "images/SpaceX_S.png";
 
-// Meteorite
-var rockReady = false;                    // Rock (meteorites) doesn============
+// Meteor image
+var rockReady = false;
 var rockImage = new Image();
 rockImage.onload = function () {
     rockReady = true;
 };
-rockImage.src = "images/Rock.png"; 
+rockImage.src = "images/rock1.png"; 
 
 // done with load images ========================================================
+
+// Load sounds ==================================================================
+var soundGameOver = "sounds/gameOver.wav"; // Game Over sound efx
+var soundCaught = "sounds/caught.wav"; //Caught spaceX sound efx
+var soundCollision = "sounds/collision.wav"; // Hit a rock sound efx
+var soundGameWon = "sounds/won.wav"; // Won the game sound efx
+var soundEfx = document.getElementById("soundEfx"); // Assign audio to soundEfx
+// done with loading sounds =====================================================
 
 
 // define objects and variables we need =========================================
 
 // Game objects
 var hero = {
-    speed: 200, // movement in pixels per second
+    speed: 300, // movement in pixels per second
     x: 0,  // where on the canvas are they?
     y: 0  // where on the canvas are they?
 };
+
 var monster = {
-// for this version, the monster does not move, so just and x and y
     x: 0,
     y: 0
 };
-var monstersCaught = 0;
-var rock1 = {
-    // for this version, the monster does not move, so just and x and y
-     x: 100,
-     y: 100
- };
- var rock2 = {
-    // for this version, the monster does not move, so just and x and y
-     x: 620,
-     y: 250
- };
- var rock3 = {
-    // for this version, the monster does not move, so just and x and y
-     x: 350,
-     y: 730
- };
 
+var rock1 = { 
+    x: 100, 
+    y: 100 
+};
+var rock2 = { 
+    x: 620, 
+    y: 250 
+};
+var rock3 = { 
+    x: 350, 
+    y: 730 
+};
+
+
+var monstersCaught = 0;
+let died = false;
 
 // end define objects and variables we need =========================================
 
-// keyboard control =============================================
+// keyboard control =================================================================
 // Handle keyboard controls
-var keysDown = {}; //object were we properties when keys go down
-                // and then delete them when the key goes up
-// so the object tells us if any key is down when that keycode
-// is down.  In our game loop, we will move the hero image if when
-// we go thru render, a key is down
+var keysDown = {};
 
 addEventListener("keydown", function (e) {
-    
     keysDown[e.keyCode] = true;
 }, false);
 
 addEventListener("keyup", function (e) {
-   
     delete keysDown[e.keyCode];
 }, false);
 
-// end keyboard control =============================================
+// end keyboard control =============================================================
+
+// define functions =================================================================
+
+let placeItem = function(character){
+    let X = 5;
+    let Y = 6;
+    let success = false;
+    while(!success) {
+        X = Math.floor(Math.random( ) * 9 ); // returns 0 thru 8
+        Y = Math.floor(Math.random( ) * 9 ); // returns 0 thru 8
+
+        if (chessBoard[X][Y] === 'x' && noCollisions(X, Y)) {
+            success = true;
+        }
+    }
+    chessBoard[X][Y] = 'O'; // mark that a square is taken
+    character.x = (X*100) + 15; // allow for border
+    character.y = (Y*100) + 16;
+}
+// Prevent overlapping of objects
+let noCollisions = function(X, Y) {
+    if (
+        (X === Math.floor(rock1.x / 60) && Y === Math.floor(rock1.y / 60)) ||
+        (X === Math.floor(rock2.x / 60) && Y === Math.floor(rock2.y / 60)) ||
+        (X === Math.floor(rock3.x / 60) && Y === Math.floor(rock3.y / 60)) ||
+        (X === Math.floor(monster.x / 160) && Y === Math.floor(monster.y / 160)) ||
+        (X === Math.floor(hero.x / 32) && Y === Math.floor(hero.y / 50))
+    ) {
+        return false; // Collision detected
+    }
+    return true; // No collisions
+}
 
 
-// define functions ==============================================
+// Setup timer
+var timeLimit = 30; // Time limit in seconds
+var timeLeft = timeLimit;
+
 
 // Update game objects
 var update = function (modifier) {
-   
-   //  adjust based on keys
-    if (38 in keysDown && hero.y > 16 + 0) { //  holding up key
-    hero.y -= hero.speed * modifier;
+
+    //  adjust based on keys
+    if (38 in keysDown && hero.y > 20 + 0) { // holding up key
+        hero.y -= hero.speed * modifier;
     }
-    if (40 in keysDown && hero.y < canvas.height - (68 + 0)) { //  holding down key
+    if (40 in keysDown && hero.y < canvas.height - (70 + 0)) { // holding down key
         hero.y += hero.speed * modifier;
     }
-    if (37 in keysDown && hero.x > (16 + 0)) { // holding left key
+    if (37 in keysDown && hero.x > (20 + 0)) { // holding left key
         hero.x -= hero.speed * modifier;
     }
     if (39 in keysDown && hero.x < canvas.width - (50 + 0)) { // holding right key
         hero.x += hero.speed * modifier;
     }
-    // Cancel if you touching meteorite?
-    if (
-        hero.x <= (rock1.x + 40)
-        && rock1.x <= (hero.x + 40)
-        && hero.y <= (rock1.y + 40)
-        && rock1.y <= (hero.y + 40)
-    ) {
-        alert("Game Over, you crashed into meteorite")
-    }
-    if (
-        hero.x <= (rock2.x + 30)
-        && rock2.x <= (hero.x + 30)
-        && hero.y <= (rock2.y + 30)
-        && rock2.y <= (hero.y + 30)
-    ) {
-        alert("Game Over, you crashed into meteorite")
-    }
-    if (
-        hero.x <= (rock3.x + 40)
-        && rock3.x <= (hero.x + 40)
-        && hero.y <= (rock3.y + 40)
-        && rock3.y <= (hero.y + 40)
-    ) {
-        alert("Game Over, you crashed into meteorite")
+
+    // Decrement time left if the game is not won yet
+    if (!won) {
+        timeLeft -= modifier;
+
+        // Check if time is up
+        if (timeLeft <= 0) {
+            soundEfx.src = soundGameOver;
+            soundEfx.play();
+            showTimeoutMessage();
+            gameover = true;
+        }
     }
 
-    // Are they touching?
+    // Check collision with meteors
+        if (
+            hero.x <= (rock1.x + 60)
+            && rock1.x <= (hero.x + 32) 
+            && hero.y <= (rock1.y + 60) 
+            && rock1.y <= (hero.y + 50)
+        ) {
+            soundEfx.src = soundCollision;
+            soundEfx.play();
+            setTimeout(function () {showLoosingMessage()}, 500); // Delay the alert message
+            gameover = true;
+        }
+
+        if (
+            hero.x <= (rock2.x + 60)
+            && rock2.x <= (hero.x + 32) 
+            && hero.y <= (rock2.y + 60) 
+            && rock2.y <= (hero.y + 50)
+        ) {
+            soundEfx.src = soundCollision;
+            soundEfx.play();
+            setTimeout(function () {showLoosingMessage()}, 500); // Delay the alert message
+            gameover = true;
+        }
+
+        if (
+            hero.x <= (rock3.x + 60)
+            && rock3.x <= (hero.x + 32) 
+            && hero.y <= (rock3.y + 60) 
+            && rock3.y <= (hero.y + 50)
+        ) {
+            soundEfx.src = soundCollision;
+            soundEfx.play();
+            setTimeout(function () {showLoosingMessage()}, 500); // Delay the alert message
+            gameover = true;
+        }
+
+    // Check collision with monster (spaceship)
     if (
-        hero.x <= (monster.x + 100)
-        && monster.x <= (hero.x + 32)
-        && hero.y <= (monster.y + 100)
-        && monster.y <= (hero.y + 50)
+        hero.x <= (monster.x + 140) &&
+        monster.x <= (hero.x + 32) &&
+        hero.y <= (monster.y + 140) &&
+        monster.y <= (hero.y + 50)
     ) {
-        ++monstersCaught;       // keep track of our “score”
-        reset();       // start a new cycle
+        soundEfx.src = soundCaught;
+        soundEfx.play();
+        ++monstersCaught; // score
+        if (monstersCaught == 5) {
+            soundEfx.src = soundGameWon;
+            soundEfx.play();
+            setTimeout(function () {}, 500); // Delay the alert message
+            gameover = true;
+            won = true;
+        }
+        reset(); //start a new cycle
     }
-        
 };
 
 // Draw everything in the main render function
 var render = function () {
     if (bgReady) {
- 
         ctx.drawImage(bgImage, 0, 0);
     }
     if (sideReady) {
- 
         ctx.drawImage(sideImage, 0, 0);
         ctx.drawImage(sideImage, 984, 0);
     }
     if (topReady) {
- 
         ctx.drawImage(topImage, 0, 984);
         ctx.drawImage(topImage, 0, 0);
     }
     if (heroReady) {
         ctx.drawImage(heroImage, hero.x, hero.y);
     }
-
     if (monsterReady) {
         ctx.drawImage(monsterImage, monster.x, monster.y);
     }
     if (rockReady) {
- 
         ctx.drawImage(rockImage, rock1.x, rock1.y);
         ctx.drawImage(rockImage, rock2.x, rock2.y);
         ctx.drawImage(rockImage, rock3.x, rock3.y);
     }
-    //rockImage
-  
+    // if (planetReady) {
+    //     ctx.drawImage(planetImage, planet1.x, planet1.y);
+    // }
+
+    // Display remaining time
+    ctx.fillStyle = "rgb(250, 250, 250)";
+    ctx.font = "24px Helvetica";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    ctx.fillText("Time Left: " + Math.ceil(timeLeft), canvas.width - 32, 32);
+
     // Score
     ctx.fillStyle = "rgb(250, 250, 250)";
     ctx.font = "24px Helvetica";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillText("Space Shuttle loaded: " + monstersCaught, 32, 32);
-
 };
 
 // The main game loop
 var main = function () {
-    var now = Date.now();
-    var delta = now - then;
-    update(delta / 1000);
-    render();
-    then = now;
-    //  Request to do this again ASAP
-    requestAnimationFrame(main);
+
+    if (gameover == false) {
+        var now = Date.now();
+        var delta = now - then;
+        update(delta / 1000);
+        render();
+        then = now;
+        // Request to do this again
+        requestAnimationFrame(main);
+    } else {
+        if(won == true){
+            showWinningMessage();
+        } 
+    }
+};
+
+// Function to display messages
+var showWinningMessage = function () {
+    alert ("Congratulations! You won the game!");
+};
+
+var showLoosingMessage = function () {
+    alert ("Game Over, you crashed into a meteor!");
+};
+
+var showTimeoutMessage = function () {
+    alert ("Game Over, Time Limit Exceeded!");
 };
 
 // Reset the game when the player catches a monster
-var reset = function () {
-    hero.x = (canvas.width / 2) -16;
-    hero.y = (canvas.height / 2) -16;
+var reset = function() {
 
-    //Place the monster somewhere on the screen randomly
-    // but not in the hedges, Article in wrong, the 64 needs to be 
-    //  hedge 32 + hedge 32 + char 32 = 96
-    monster.x = 32 + (Math.random() * (canvas.width - 178));
-    monster.y = 32 + (Math.random() * (canvas.height - 165));
+    if (died == true) {
+        soundEfx.src = soundGameOver;
+        soundEfx.play();
+        setTimeout(function () {
+            showLoosingMessage();
+        }, 500); // Delay the alert message
+    }
+    else {
+        placeItem(hero);
+        placeItem(monster);
+        placeItem(rock1);
+        placeItem(rock2);
+        placeItem(rock3);
+        // placeItem(planet1);
+
+        if (monstersCaught === 5 && !won) {
+            // change sound effect and play it 
+            soundEfx.src = soundGameWon;
+            soundEfx.play();
+            setTimeout(function () {
+                showWinningMessage();
+            }, 500); // Delay the alert message
+        }
+    }
 };
+
+
+// var reset = function () {
+//     hero.x = canvas.width / 2 - 16;
+//     hero.y = canvas.height / 2 - 25;
+//     // width: border 16 + border 16 + monster 160
+//     // height: border 16 + border 16 + monster 160
+//     monster.x = 16 + Math.random() * (canvas.width - 192);
+//     monster.y = 16 + Math.random() * (canvas.height - 192);
+// };
 
 // end of define functions ==============================================
 
@@ -240,4 +371,3 @@ var reset = function () {
 var then = Date.now();
 reset();
 main();  // call the main game loop.
-
